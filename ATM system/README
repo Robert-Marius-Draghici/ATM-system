@@ -1,12 +1,6 @@
 Tema 2 Protocoale de comunicatie
 Draghici Marius Robert, 325CD
 ================================================================================
-	Punct de pornire:
-	
-	Mentionez ca am pornit implementarea de la codul din laboratorul 8, atat
-pentru client, cat si pentru server. De asemenea, am folosit si cod din
-laboratoarele 6 si 7 pentru operatiile cu socketi TCP si UDP.
-================================================================================
 	Structuri auxiliare:
 	
 	In fisierul atm.h am definit doua structuri auxiliare, una pentru a 
