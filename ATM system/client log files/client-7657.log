@@ -1,0 +1,7 @@
+login 456123 3
+ATM> −5 : Card blocat
+login 456123 8799
+ATM> Welcome Popovici George
+logout
+ATM> Deconectare de la bancomat
+quit

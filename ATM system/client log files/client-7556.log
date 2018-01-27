@@ -1,0 +1,21 @@
+login 456123 1
+ATM> −3 : Pin gresit
+login 456123 2
+ATM> −3 : Pin gresit
+login 456123 3
+ATM> −5 : Card blocat
+login 456123 8799
+ATM> −5 : Card blocat
+unlock
+UNLOCK> Trimite parola secreta
+qw
+UNLOCK> -7 : Deblocare esuata
+unlock
+UNLOCK> Trimite parola secreta
+qwerty
+UNLOCK> Client deblocat
+login 456123 8799
+ATM> Welcome Popovici George
+logout
+ATM> Deconectare de la bancomat
+quit

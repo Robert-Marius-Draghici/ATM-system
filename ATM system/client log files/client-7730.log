@@ -1,0 +1,15 @@
+login 111789 1
+ATM> −3 : Pin gresit
+login 111789 1
+ATM> −3 : Pin gresit
+login 111789 2
+ATM> −5 : Card blocat
+unlock
+UNLOCK> Trimite parola secreta
+qw
+UNLOCK> -7 : Deblocare esuata
+unlock
+UNLOCK> Trimite parola secreta
+123geo
+UNLOCK> Client deblocat
+quit

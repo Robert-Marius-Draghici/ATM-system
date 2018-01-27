@@ -1,0 +1,222 @@
+Tema 2 Protocoale de comunicatie
+Draghici Marius Robert, 325CD
+================================================================================
+	Punct de pornire:
+	
+	Mentionez ca am pornit implementarea de la codul din laboratorul 8, atat
+pentru client, cat si pentru server. De asemenea, am folosit si cod din
+laboratoarele 6 si 7 pentru operatiile cu socketi TCP si UDP.
+================================================================================
+	Structuri auxiliare:
+	
+	In fisierul atm.h am definit doua structuri auxiliare, una pentru a 
+reprezenta datele unui utilizator care foloseste bancomatul si o structura
+de tip cheie valoare.
+
+	Structura ATMUser contine drept campuri datele existente in fisierul 
+users_data_file pentru fiecare utilizator in parte(nume, prenume, numar card,
+pin, parola secreta, sold), un camp pentru a contoriza numarul de incercari
+nereusite de autentificare (daca se ajunge la 3 incercari, cardul se blocheaza
+iar acest numar se reseteaza) si un camp pentru a indica daca respectivul card
+a fost blocat sau nu.
+
+	Structura SocketIndexMap este utilizata in implementarea serverului. Ideea
+este ca atunci cand la server se conecteaza mai multe procese client ( adica
+mai multe terminale), mai multe persoane pot trimite alternativ comenzi la server.
+Daca nu am implementa un mecanism care sa faca distinctia intre sesiuni, atunci
+am putea ajunge in cazul in care comenzile si datele ar ajunge amestecate( spre
+exemplu daca clientul 1 trimite comanda listsold, el primeste soldul de la clientul
+2). Pentru a evita acest inconvenient, am creat o structura de tip cheie-valoare,
+care asociaza fiecarui socket indexul clientului conectat la terminalul 
+corespunzator acelui socket (serverul retine intr-un vector utilizatorii 
+autentificati). Altfel spus, cheia este socketul, iar valoarea specifica este
+indexul din vectorul de clienti autentificati.
+================================================================================
+	Implementare server:
+	
+	Serverul primeste un fisier de intrare ce contine datele celor N clienti
+ce se vor putea conecta la acesta prin intermediul proceselor client. Vom
+retine datele acestor utilizatori local in server in cadrul unui vector cu 
+elemente de tip ATMUser, deoarece serverul trebuie sa retina modificarile 
+facute in contul utilizatorilor ( spre exemplu, modificarea soldului prin
+operatiuni de retragere sau depunere de numerar ). De asemenea, serverul trebuie
+sa tina evidenta utilizatorilor autentificati, motiv pentru care am declarat
+un vector de tip int, de aceeasi dimensiune cu vectorul de tip ATMUser, in care
+pe fiecare pozitie voi pune 0 daca clientul nu este autentificat sau 1 in caz
+contrar(fiecare pozitie din vectorul logged_users corespunde aceleiasi pozitii
+din atm_users). In plus, pentru a realiza o distinctie intre sesiuni multiple
+fiecare apartinand unui client diferit utilizez un vector de tip SocketIndexMap,
+a carui functionalitate a fost descrisa mai devreme.
+
+	In server am definit doua functii auxiliare. Functia check_card_number
+este folosita pentru a cauta numarul de card in datele utilizatorilor, pentru 
+a vedea daca acesta este valid. Functia getIndex este folosita pentru a identifica
+indexul utilizatorului conectat printr-un proces client reprezentat de un socket.
+
+	Dupa cum se specifica in enunt, se va stabili o conexiune de tip TCP intre
+server si client pentru ca cel din urma sa beneficieze de serviciile celui dintai.
+Socketul listening_socket este un socket TCP folosit pentru a asculta cererile
+de conexiune din partea proceselor client. client_socket este un socket ce rezulta
+in urma apelului accept, deci reprezinta socketul unui proces client a carui
+cerere de conexiune a fost acceptata de server.
+
+	De asemenea, serverul ofera si un serviciu de deblocare, pentru acesta fiind
+necesar un socket UDP, unblock_service_socket.
+
+	Socketul TCP pentru ascultarea cererilor de conexiune si socketul UDP 
+sunt legate prin functia bind de adresa serverului. Apoi se apeleaza listen pe
+socketul de ascultare, numarul maxim de cereri fiind setat la N.
+
+	Introducem in multimea read_fds a functiei select acei socketi de pe care
+se vor citi date si anume, standard input(0), socketul TCP pentru listen,
+socketul UDP pentru serviciul deblocare si socketii TCP ai proceselor client ce 
+se conecteaza la server.
+
+	Apoi, serverul gestioneaza mesajele primite in functie de socketul de pe care
+au fost citite si trimite mesajele corespunzatoare.
+================================================================================
+	Apeluri blocante si select:
+	
+	Atat in cadrul serverului, cat si al clientului intalnim mai multe apeluri
+blocante: apelul accept(citire de pe socketul inactiv pe care se primesc cereri),
+apelurile recv si recvfrom(care realizeaza citirea de pe socketii activi in acest
+caz socketul UDP pentru serviciul de deblocare si socketii proceselor client) si
+apelurile scanf, fgets pentru citirea de la tastatura. Pentru a evita anumite
+inconveniente, cum ar fi sa asteptam sa primim date pe un socket pentru a putea
+trimite date pe un alt socket, se foloseste functia select, care permite
+citirea datelor de pe socketii care au primit date si gestionarea mai multor
+socketi in acelasi timp.
+================================================================================
+	Motivatie utilizare protocoale TCP si UDP:
+	
+	Folosim protocolul de nivel transport TCP pentru a realiza conexiunea intre
+server si fiecare dintre procesele client, deoarece ne dorim un flux sigur de 
+date intre cele doua entitati. Este de preferat un flux sigur de date, astfel incat
+comenzile trimise de utilizator sa ajunga fara eroare la server si de asemenea
+informatiile trimise de servar inapoi sa fie corecte. De asemenea, protocolul TCP
+garanteaza primirea in ordine a mesajelor transmise.
+
+	Folosim protocolul de nivel transport UDP pentru a realiza conexiunea intre
+procesul client si serviciul de deblocare al bancomatului, deoarece acest
+serviciu este folosit mai rar si se trimit mult mai putine mesaje spre deosebire
+de fluxul TCP prezentat anterior. Chiar daca s-ar pierde sau corupe pachete pe
+parcursul comunicatiei, serverul trimite inapoi la procesul client un mesaj
+care contine fie datele solicitate, fie o eroare ce indica faptul ca datele 
+trimise sunt gresite si operatia a esuat.
+================================================================================
+	Comenzi:
+	
+	1)Comanda login
+	Pentru aceasta comanda, utilizatorul trimite serverului numarul de card si
+pinul sau. Serverul verifica mai intai daca exista numarul de card primit. Daca nu
+exista, intoarce eroarea -4. Altfel, verifica daca utilizatorul este deja autentificat.
+Daca este, atunci intoarce o eroare -2. Altfel, verifica daca pinul primit este
+corect. Daca pinul este gresit, se intoarce o eroare -3 si se incrementeaza un
+contor care tine minte cate incercari esuate au fost realizate. Daca acest contor
+ajunge la 3, atunci cardul se blocheaza. Aceasta inseamna ca orice incercare
+de autentificare de pe orice terminal va genera o eroare -5.
+	
+	In cele din urma, daca pinul introdus este corect, utilizatorul este 
+autentificat. Am decis ca la o autentificare reusita, numarul de incercari esuate 
+de autentificare sa fie resetat la 0. Alte modificari inclus setarea la 1 a
+elementului de pe indexul corespunzator utilizatorului autentificat si asocierea
+indexului cu socketul.
+
+	De asemenea, daca intr-un proces client este autentificat deja un utilizator,
+daca se incearca autentificarea altuia, fara ca precedentul sa se fi delogat,
+atunci se va intoarce o eroare -2.
+
+	In plus, am decis sa fac verificarea faptului ca utilizatorul este deja logat
+inainte de verificarea pinului, deoarece indiferent de corectitudinea pinului,
+utilizatorul nu s-ar fi putut loga si s-ar fi intors o eroare -2.
+
+	2)Comanda logout
+	In procesul client, daca un utilizator este logat, prin aceasta comanda el
+anunta serverul de incheierea sesiunii. Serverul va reseta la 0 pozitia 
+corespunzatoare din vectorul logged_users. In cazul in care nu este niciun 
+utilizator autentificat, procesul client intoarce eroare -1 si nu mai trimite nimic
+la server.
+
+	3)Comanda listsold
+	Scopul acestei comenzi este de a returna soldul in formatul double cu doua 
+zecimale. Aceasta comanda nu genereaza vreun cod de eroare.
+
+	4)Comanda getmoney
+	Serverul verifica mai intai daca suma primita este rotunda, adica multiplu
+de 10. Daca nu este, intoarce codul -9. Altfel, verifica daca suma ce se doreste
+a fi retrasa este mai mica sau egala cu soldul curent(nu poate sa scoata mai multi
+bani decat are in cont). In caz contrar intoarce eroare -8. Daca nu exista nicio
+eroare se va retrage suma dorita din cont, iar serverul va actualiza soldul
+respectivului utilizator.
+
+	5)Comanda putmoney
+	Scopul acestei comenzi este de a depunde o anumita suma de bani in contul
+utilizatorului. Serverul actualizeaza soldul corespunzator. Aceasta comanda nu
+genereaza vreun cod de eroare.
+
+	6)Comanda unlock
+	Dupa cum am mentionat si la comanda login, blocarea unui card se face 
+atunci cand numarul de incercari de logare esuate ajunge la 3. Aceste incercari
+pot fi facute si in cadrul mai multor procese client, nu doar al procesului
+client curent. Spre exemplu, daca in procesul client 1 utilizatorul ar introduce
+pinul gresit de 2 ori si apoi ar folosi procesul client 2 pentru a introduce
+pentru a treia oara pinul, daca acesta este gresit cardul se blocheaza. Numarul
+de incercari esuate se reseteaza fie la o autentificare reusita, fie cand
+acesta devine 3. O alta situatie posibila este urmatoare: utilizatorul 1 introduce
+de doua ori pinul gresit, apoi de la acelasi proces client se autentifica un
+alt utilizator, pe care il vom numi 2, dupa ce 2 se delogheaza, daca 1 introduce
+iar pinul gresit, cardul lui se blocheaza.
+
+	Clientul ataseaza mai intai comenzii unlock numarul de card corespunzator si
+apoi trimite comanda la server pe socketul UDP. Numarul de card atasat este cel
+corespunzator ultimei comenzi de login efectuate. Daca acest numar de card nu
+exista, serverul va raspunde pe socketul UDP cu o eroare -4. Daca numarul de card
+este corect, atunci serverul cere parola secreta a utilizatorului. Daca parola
+trimisa este gresita se intoarce eroare -7, altfel clientul este deblocat.
+
+	De asemenea, daca se incearca folosirea comenzii unlock in situatii 
+necorespunzatoare ( cand utilizatorul este deja autentificat, cand cardul nu este
+blocat etc) se intoarce eroare -6.
+
+	In arhiva se gasesc cateva fisiere de log care exemplifica modul de implementare
+al comenzii unlock.
+
+	Fisierul client-7556.log ilustreaza cazul in care introduc de 3 ori consecutiv
+pinul gresit.
+	Fisierul client-7588.log ilustreaza cazul in care introduc de 2 ori pinul
+gresit, apoi vine un alt utilizator care deschide o sesiune, realizeaza tranzactii,
+apoi o inchide, iar primul utilizator introduce a treia oara pinul gresit si i
+se blocheaza cardul.
+	Fisierele client-7657.log si client-7691.log ilustreaza cazul in care introduc
+de 2 ori pinul gresit intr-un terminal si apoi introduc a treia oara pinul gresit
+in alt terminal, ceea ce duce la blocarea cardului.
+	Fisierele client-7728.log si client-7730.log ilustreaza cazul in care 
+la server se conecteaza concomitent doua procese client si se blocheaza doua
+carduri. Observam ca nu se amesteca datele ca urmare a implementarii din client
+(clientul trimite comanda unlock, primeste imediat cererea parolei secrete, iar
+raspunsul la aceasta cerere este primit mai jos cand se verifica daca i este
+socketul UDP.	
+
+	7)Comanda quit din client
+	In cazul in care procesul client doreste sa se inchida, acesta trimite un
+mesaj in care anunta serverul de decizia sa, inchide fisierul de log in care
+a scris comenzile si rezultatele lor, apoi inchide socketii deschisi si se 
+inchide.
+	
+	De asemenea, in server, daca un proces client s-a inchis, atunci socketul TCP
+corespunzator este inchis si eliminat din multimea read_fds a apelului select.
+In plus, daca la momentul inchiderii exista un utilizator logat care nu a apucat
+sa se delogheze inainte de inchidere, acesta va fi delogat automat de catre server.
+
+	8)Comanda quit din server
+	Daca serverul primeste de la tastatura comanda quit, atunci el va inchide
+mai intai toti socketii TCP deschisi corespunzatori clientilor apoi va inchide
+socketii TCP pentru ascultare si UDP pentru deblocare, urmand sa inchida si
+fisierul deschis pentru citirea datelor, ca in final sa si intrerupa executia.
+================================================================================
+	Mesaje trimise:
+	
+	Raspunsurile primite de client pe socketul TCP sunt prefixate cu ATM>, iar
+cele primite pe socketul UDP sunt prefixate cu UNLOCK>. Codurile de eroare sunt
+cele utilizate in enunt, codul -10 fiind folosit pentru erori la comenzi precum
+bind, connect, accept, select, send, recv, sendto, recvfrom etc.

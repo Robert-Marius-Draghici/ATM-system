@@ -1,0 +1,19 @@
+login 456123 1
+ATM> −3 : Pin gresit
+login 456123 2
+ATM> −3 : Pin gresit
+login 456123 2
+ATM> −5 : Card blocat
+unlock
+UNLOCK> Trimite parola secreta
+qw
+UNLOCK> -7 : Deblocare esuata
+unlock
+UNLOCK> Trimite parola secreta
+123geo
+UNLOCK> -7 : Deblocare esuata
+unlock
+UNLOCK> Trimite parola secreta
+qwerty
+UNLOCK> Client deblocat
+quit
